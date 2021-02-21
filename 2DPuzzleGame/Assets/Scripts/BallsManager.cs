@@ -16,6 +16,7 @@ public class BallsManager : MonoBehaviour
         Start,
         BallControll,
         Match,
+        DropDown,
         Result
     }
 
@@ -25,9 +26,7 @@ public class BallsManager : MonoBehaviour
 
     float BottomRange = 0f;
 
-    float waitTime = 2f;
-
-    bool stateChange = true;
+    float waitTime = 1f;
 
     private void Update()
     {
@@ -42,6 +41,7 @@ public class BallsManager : MonoBehaviour
 
                 ballGenerator.GetComponent<GridLayoutGroup>().enabled = true;
                 ballControllers.Clear();
+                // BallGeneratorで作られたBallをBallsManagerの
                 foreach (var ballCtrl in ballGenerator.Balls)
                 {
                     ballControllers.Add(ballCtrl.GetComponent<BallController>());
@@ -76,6 +76,7 @@ public class BallsManager : MonoBehaviour
                 break;
             case GameState.Match:
                 CheckMatch();
+                waitTime -= Time.deltaTime;
                 foreach (var ball in ballControllers)
                 {
                     if (ball.DestroyFlag)
@@ -83,38 +84,38 @@ public class BallsManager : MonoBehaviour
                         ball.gameObject.SetActive(false);
                     }
                 }
-                stateChange = true;
+                if (waitTime < 0)
+                {
+                    waitTime = 1f;
+                    gameState = GameState.DropDown;
+                }
+                break;
+            case GameState.DropDown:
                 waitTime -= Time.deltaTime;
                 if (waitTime < 0)
                 {
-                    waitTime = 2f;
-                    gameState = GameState.Result;
-                }
-                break;
-            case GameState.Result:
-                if (stateChange)
-                {
                     if (DropBalls())
                     {
-                        StartCoroutine(wait());
+                        gameState = GameState.Result;
                     }
                     else
                     {
                         gameState = GameState.Start;
                     }
-                    stateChange = false;
+                    waitTime = 1f;
                 }
+                break;
 
+            case GameState.Result:
+                waitTime -= Time.deltaTime;
+                if (waitTime < 0)
+                {
+                    ReGenerate();
+                    waitTime = 1f;
+                    gameState = GameState.Match;
+                }
                 break;
         }
-    }
-
-    IEnumerator wait()
-    {
-        yield return new WaitForSeconds(1f);
-        ReGenerate();
-        yield return new WaitForSeconds(0.5f);
-        gameState = GameState.Match;
     }
 
     public void ReGenerate()
@@ -122,18 +123,24 @@ public class BallsManager : MonoBehaviour
         // 移動し終わった後、消えたボールを補充
         foreach (var destroyBall in ballControllers)
         {
+            // ballControllersの中でgameobjectのActiveが切れているものを取得する
             if (!destroyBall.gameObject.activeSelf)
             {
+                // 消えたボールのタイプを再指定
                 destroyBall.SetRandomType();
+                // ボールのオブジェクトのアクティブをtrueにする
                 destroyBall.gameObject.SetActive(true);
+                // ボールのDestroyFlagをもう一度立てる
                 destroyBall.DestroyFlag = false;
             }
         }
     }
 
+    // ボールの判定を行う
     public bool CheckMatch()
     {
         // 列(縦の値y)
+        // (インクリメントするので-1指定)
         var columCount = -1;
         // 行(横の値x)
         var rowCount = 0;
@@ -150,10 +157,14 @@ public class BallsManager : MonoBehaviour
         {
             // 列を6個の中身で昇順で並び替える
             var rowGroup = group.OrderBy(x => Mathf.Round(x.CurrentPos.x));
+
+            // 行の何番目かにつかう(インクリメントするので-1指定)
             rowCount = -1;
+            // 列の何番目か
             columCount++;
             foreach (var ball in rowGroup)
             {
+                // 行の何番目か
                 rowCount++;
                 ball.BoardPos = new Vector2(rowCount, columCount);
                 // 操作後のListにBoardPosを定義したball追加していく
@@ -174,16 +185,17 @@ public class BallsManager : MonoBehaviour
         return 0 < pos;
     }
 
+    // ボールが何個連なっているかを判定する
     private bool IsMatchBall(BallController ball)
     {
-        // ballの情報を取得
+        // ballのpos情報を取得
         var pos = ball.BoardPos;
         var type = ball.ThisBallType;
 
-        // 縦方向にマッチするかの判定 MEMO: 自分自身をカウントするため +1 する
+        // 縦方向にマッチするかの判定 
         var verticalMatchCount = GetSameTypePieceNum(type, pos, Vector2.up) + GetSameTypePieceNum(type, pos, Vector2.down) + 1;
 
-        // 横方向にマッチするかの判定 MEMO: 自分自身をカウントするため +1 する
+        // 横方向にマッチするかの判定 
         var horizontalMatchCount = GetSameTypePieceNum(type, pos, Vector2.right) + GetSameTypePieceNum(type, pos, Vector2.left) + 1;
         if (2 < horizontalMatchCount || 2 < verticalMatchCount)
         {
@@ -198,8 +210,9 @@ public class BallsManager : MonoBehaviour
         var count = 0;
         while (true)
         {
+            // Position(0,0など)にsearchDirを足していく
             pos += searchDir;
-            if (IsInBoard(pos) && ballControllers.Find(x => x.BoardPos.x == pos.x && x.BoardPos.y == pos.y).ThisBallType == ballType)
+            if (IsInBoard(pos) && ballControllers.FirstOrDefault(x => x.BoardPos.x == pos.x && x.BoardPos.y == pos.y).ThisBallType == ballType)
             {
                 count++;
             }
@@ -217,7 +230,7 @@ public class BallsManager : MonoBehaviour
         return boardPos.x >= 0 && boardPos.y >= 0 && boardPos.x < 6 && boardPos.y < 5;
     }
 
-
+    // ボールを落とす処理
     private bool DropBalls()
     {
         var destroyBollCount = 0;
