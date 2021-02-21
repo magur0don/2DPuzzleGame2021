@@ -27,6 +27,8 @@ public class BallsManager : MonoBehaviour
 
     float waitTime = 2f;
 
+    bool stateChange = true;
+
     private void Update()
     {
         switch (gameState)
@@ -37,27 +39,28 @@ public class BallsManager : MonoBehaviour
 
             case GameState.Init:
                 ballGenerator.BallsGenerate();
-                gameState = GameState.Start;
-                break;
-            case GameState.Start:
-                ballGenerator.GetComponent<GridLayoutGroup>().enabled = true;
 
+                ballGenerator.GetComponent<GridLayoutGroup>().enabled = true;
                 ballControllers.Clear();
                 foreach (var ballCtrl in ballGenerator.Balls)
                 {
                     ballControllers.Add(ballCtrl.GetComponent<BallController>());
                 }
 
+                gameState = GameState.Start;
+                break;
+            case GameState.Start:
+                ControllBall = null;
+
+                // BottomRangeがとれないのでここで取得
                 if (BottomRange == 0f)
                 {
                     BottomRange = (ballControllers[0].CurrentPos.y - ballControllers[6].CurrentPos.y);
-                    Debug.Log(BottomRange);
                 }
-
 
                 foreach (var ballCtrl in ballControllers)
                 {
-                    if (ballCtrl.IsTouch)
+                    if (ControllBall == null && ballCtrl.IsTouch)
                     {
                         ControllBall = ballCtrl;
                         gameState = GameState.BallControll;
@@ -80,26 +83,45 @@ public class BallsManager : MonoBehaviour
                         ball.gameObject.SetActive(false);
                     }
                 }
-                gameState = GameState.Result;
+                stateChange = true;
+                waitTime -= Time.deltaTime;
+                if (waitTime < 0)
+                {
+                    waitTime = 2f;
+                    gameState = GameState.Result;
+                }
                 break;
             case GameState.Result:
-                if (DropBalls())
+                if (stateChange)
                 {
-                    gameState = GameState.Match;
+                    if (DropBalls())
+                    {
+                        StartCoroutine(wait());
 
-                }
-                else
-                {
-                    gameState = GameState.Invalide;
-                }
 
+                    }
+                    else
+                    {
+                        gameState = GameState.Start;
+                    }
+                    stateChange = false;
+                }
 
                 break;
         }
     }
+
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(1f);
+        ReGenerate();
+        yield return new WaitForSeconds(0.5f);
+        gameState = GameState.Match;
+    }
+
     public void ReGenerate()
     {
-    // 移動し終わった後、消えたボールを補充
+        // 移動し終わった後、消えたボールを補充
         foreach (var destroyBall in ballControllers)
         {
             if (!destroyBall.gameObject.activeSelf)
@@ -191,6 +213,7 @@ public class BallsManager : MonoBehaviour
         return pos.x >= 0 && pos.y >= 0 && pos.x < 6 && pos.y < 5;
     }
 
+
     private bool DropBalls()
     {
         var destroyBollCount = 0;
@@ -212,7 +235,6 @@ public class BallsManager : MonoBehaviour
                 destroyBollCount++;
             }
         }
-        ReGenerate();
         return destroyBollCount > 0;
     }
 }
