@@ -89,14 +89,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4735fdc3b3516444bb1d788ec3813d6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsTouched: 0
+  CurrentPos: {x: 0, y: 0}
   sprites:
-  - {fileID: 21300000, guid: 34f6391a90397d1428165452bdad92dd, type: 3}
-  - {fileID: 21300000, guid: b67e24d2c83024842a53e47937ec9db5, type: 3}
-  - {fileID: 21300000, guid: 999f661f3c84457408d12ac9cff89a88, type: 3}
-  - {fileID: 21300000, guid: 88d57f876f87d3445bb4ac150d4d7b9e, type: 3}
   - {fileID: 21300000, guid: 8607d946aad11df43ab51907b21cd2d0, type: 3}
   - {fileID: 21300000, guid: d8947c8004361af4eaa7f5502f9fc118, type: 3}
+  - {fileID: 21300000, guid: b67e24d2c83024842a53e47937ec9db5, type: 3}
+  - {fileID: 21300000, guid: 34f6391a90397d1428165452bdad92dd, type: 3}
+  - {fileID: 21300000, guid: 999f661f3c84457408d12ac9cff89a88, type: 3}
+  - {fileID: 21300000, guid: 88d57f876f87d3445bb4ac150d4d7b9e, type: 3}
+  ThisBallType: 0
 --- !u!50 &6185267729011700965
 Rigidbody2D:
   serializedVersion: 4

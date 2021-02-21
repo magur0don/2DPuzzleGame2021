@@ -4,16 +4,16 @@ using UnityEngine;
 using UnityEngine.UI;
 public class BallGenerator : MonoBehaviour
 {
-
     public GameObject Ball = null;
 
-    private GridLayoutGroup GridLayoutGroup = null;
+    public List<GameObject> Balls = new List<GameObject>();
 
-    private void Awake()
+    public void BallsGenerate()
     {
         for (int i = 0; i < 30; i++)
         {
-            Instantiate(Ball, this.transform);
+            var ball = Instantiate(Ball, this.transform);
+            Balls.Add(ball);
         }
     }
 
