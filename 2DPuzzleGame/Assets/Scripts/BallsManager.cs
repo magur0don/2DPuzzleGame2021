@@ -97,8 +97,6 @@ public class BallsManager : MonoBehaviour
                     if (DropBalls())
                     {
                         StartCoroutine(wait());
-
-
                     }
                     else
                     {
@@ -135,34 +133,40 @@ public class BallsManager : MonoBehaviour
 
     public bool CheckMatch()
     {
-        var rowCount = -1;
-        var columCount = 0;
+        // 列(縦の値y)
+        var columCount = -1;
+        // 行(横の値x)
+        var rowCount = 0;
 
+        // 操作した後のListを作成する
         List<BallController> controlledList = new List<BallController>();
-        // まずy軸のグループを作り、6個入り5列作成する
-        var chunks = ballControllers.OrderByDescending(y => Mathf.Round(y.CurrentPos.y))
+        controlledList.Clear();
+
+        // まず行のグループを作り、6個入り5行のまとまりを作成する
+        var ballChunks = ballControllers.OrderByDescending(y => Mathf.Round(y.CurrentPos.y))
             .GroupBy(g => Mathf.Round(g.CurrentPos.y));
 
-        foreach (var group in chunks)
+        foreach (var group in ballChunks)
         {
-            // X軸を6個の中身で昇順で並び替える
-            var xgroup = group.OrderBy(x => Mathf.Round(x.CurrentPos.x));
-            columCount = -1;
-            rowCount++;
-            foreach (var item in xgroup)
+            // 列を6個の中身で昇順で並び替える
+            var rowGroup = group.OrderBy(x => Mathf.Round(x.CurrentPos.x));
+            rowCount = -1;
+            columCount++;
+            foreach (var ball in rowGroup)
             {
-                columCount++;
-                item.BoardPos = new Vector2(columCount, rowCount);
-                controlledList.Add(item);
+                rowCount++;
+                ball.BoardPos = new Vector2(rowCount, columCount);
+                // 操作後のListにBoardPosを定義したball追加していく
+                controlledList.Add(ball);
             }
         }
+
         ballControllers = controlledList;
         // 判定をしていく
         var pos = 0;
-
         foreach (var piece in ballControllers)
         {
-            if (IsMatchPiece(piece))
+            if (IsMatchBall(piece))
             {
                 pos++;
             }
@@ -170,32 +174,32 @@ public class BallsManager : MonoBehaviour
         return 0 < pos;
     }
 
-    private bool IsMatchPiece(BallController piece)
+    private bool IsMatchBall(BallController ball)
     {
-        // ピースの情報を取得
-        var pos = piece.BoardPos;
-        var kind = piece.ThisBallType;
+        // ballの情報を取得
+        var pos = ball.BoardPos;
+        var type = ball.ThisBallType;
 
         // 縦方向にマッチするかの判定 MEMO: 自分自身をカウントするため +1 する
-        var verticalMatchCount = GetSameKindPieceNum(kind, pos, Vector2.up) + GetSameKindPieceNum(kind, pos, Vector2.down) + 1;
+        var verticalMatchCount = GetSameTypePieceNum(type, pos, Vector2.up) + GetSameTypePieceNum(type, pos, Vector2.down) + 1;
 
         // 横方向にマッチするかの判定 MEMO: 自分自身をカウントするため +1 する
-        var horizontalMatchCount = GetSameKindPieceNum(kind, pos, Vector2.right) + GetSameKindPieceNum(kind, pos, Vector2.left) + 1;
+        var horizontalMatchCount = GetSameTypePieceNum(type, pos, Vector2.right) + GetSameTypePieceNum(type, pos, Vector2.left) + 1;
         if (2 < horizontalMatchCount || 2 < verticalMatchCount)
         {
-            piece.DestroyFlag = true;
+            ball.DestroyFlag = true;
         }
         return 2 < horizontalMatchCount || 2 < verticalMatchCount;
     }
 
-    // 対象の方向に引数で指定した種類のピースがいくつあるかを返す
-    private int GetSameKindPieceNum(BallController.BallType kind, Vector2 piecePos, Vector2 searchDir)
+    // 対象の方向に引数で指定した種類がいくつあるかを返す
+    private int GetSameTypePieceNum(BallController.BallType ballType, Vector2 pos, Vector2 searchDir)
     {
         var count = 0;
         while (true)
         {
-            piecePos += searchDir;
-            if (IsInBoard(piecePos) && ballControllers.Find(x => x.BoardPos.x == piecePos.x && x.BoardPos.y == piecePos.y).ThisBallType == kind)
+            pos += searchDir;
+            if (IsInBoard(pos) && ballControllers.Find(x => x.BoardPos.x == pos.x && x.BoardPos.y == pos.y).ThisBallType == ballType)
             {
                 count++;
             }
@@ -208,9 +212,9 @@ public class BallsManager : MonoBehaviour
     }
 
     // 対象の座標がボードに存在するか(ボードからはみ出していないか)を判定する
-    private bool IsInBoard(Vector2 pos)
+    private bool IsInBoard(Vector2 boardPos)
     {
-        return pos.x >= 0 && pos.y >= 0 && pos.x < 6 && pos.y < 5;
+        return boardPos.x >= 0 && boardPos.y >= 0 && boardPos.x < 6 && boardPos.y < 5;
     }
 
 
@@ -219,11 +223,23 @@ public class BallsManager : MonoBehaviour
         var destroyBollCount = 0;
         foreach (var destroyBall in ballControllers)
         {
+            // まず削除対象のBallを取得する
             if (destroyBall.DestroyFlag)
             {
-                // 上にあるボールたちを抽出する
-                var destoyBallUpList = ballControllers.Where(b => b.BoardPos.x == destroyBall.BoardPos.x &&
-                !b.DestroyFlag && destroyBall.BoardPos.y > b.BoardPos.y);
+                // DestroyBallの上にあるBallのリストを作成していく
+                var destoyBallUpList = new List<BallController>();
+                destoyBallUpList.Clear();
+                foreach (var upBall in ballControllers)
+                {
+                    // x軸が同じで、yが自分より小さい(4が一番下、0が一番上なので)、DestroyFlagを立てていないBallをまとめる
+                    if (upBall.BoardPos.x == destroyBall.BoardPos.x && !upBall.DestroyFlag
+                        && destroyBall.BoardPos.y > upBall.BoardPos.y)
+                    {
+                        destoyBallUpList.Add(upBall);
+                    }
+                }
+
+                // 作成したリストの要素のpositionを下に移動させる
                 foreach (var downBall in destoyBallUpList)
                 {
                     var downPos = new Vector2(downBall.CurrentPos.x, downBall.CurrentPos.y -= BottomRange);
