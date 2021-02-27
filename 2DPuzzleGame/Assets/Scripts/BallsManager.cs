@@ -28,6 +28,7 @@ public class BallsManager : MonoBehaviour
 
     float waitTime = 1f;
 
+    private bool secondMatch = false;
     private void Update()
     {
         switch (gameState)
@@ -51,7 +52,7 @@ public class BallsManager : MonoBehaviour
                 break;
             case GameState.Start:
                 ControllBall = null;
-
+                secondMatch = false;
                 // BottomRangeがとれないのでここで取得
                 if (BottomRange == 0f)
                 {
@@ -77,15 +78,13 @@ public class BallsManager : MonoBehaviour
             case GameState.Match:
                 CheckMatch();
                 waitTime -= Time.deltaTime;
-                foreach (var ball in ballControllers)
+                if (!secondMatch)
                 {
-                    if (ball.DestroyFlag)
-                    {
-                        ball.gameObject.SetActive(false);
-                    }
+                    ExcuteBalls();
                 }
                 if (waitTime < 0)
                 {
+                    ExcuteBalls();
                     waitTime = 1f;
                     gameState = GameState.DropDown;
                 }
@@ -110,6 +109,7 @@ public class BallsManager : MonoBehaviour
                 waitTime -= Time.deltaTime;
                 if (waitTime < 0)
                 {
+                    secondMatch = true;
                     ReGenerate();
                     waitTime = 1f;
                     gameState = GameState.Match;
@@ -132,6 +132,18 @@ public class BallsManager : MonoBehaviour
                 destroyBall.gameObject.SetActive(true);
                 // ボールのDestroyFlagをもう一度立てる
                 destroyBall.DestroyFlag = false;
+            }
+        }
+    }
+
+    // ボールを消す
+    private void ExcuteBalls()
+    {
+        foreach (var ball in ballControllers)
+        {
+            if (ball.DestroyFlag)
+            {
+                ball.gameObject.SetActive(false);
             }
         }
     }
